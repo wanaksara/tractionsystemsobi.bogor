@@ -1,519 +1,1032 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, Target, FileText, DollarSign, Calendar as CalendarIcon, 
-  LogOut, CheckCircle, Clock, AlertCircle, Upload, Plus, Users, 
-  ChevronRight, Check, X, FileSignature, Loader2
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traction Report System - Sobat Bumi Bogor</title>
+    
+    <!-- Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: {
+                        primary: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857' },
+                        secondary: '#f3f4f6',
+                        accent: '#3b82f6'
+                    }
+                }
+            }
+        }
+    </script>
 
-// URL GOOGLE APPS SCRIPT ANDA (TERBARU)
-const API_URL = 'https://script.google.com/macros/s/AKfycbwy7sQcDsUbCAB-S0xcHsbBFWKKjcFJZyIRFVvGLT-zi7v7UTxVz9qXI24ivXbH8xit/exec';
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- FullCalendar -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
 
-// --- MAIN APP COMPONENT ---
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  
-  // Global States
-  const [tasks, setTasks] = useState([]);
-  const [surat, setSurat] = useState([]);
-  const [dana, setDana] = useState([]);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  
-  // Fungsi untuk mengambil data dari Google Sheet saat user login
-  const fetchAllData = async (loggedInUser) => {
-    setIsLoadingData(true);
-    try {
-      const response = await fetch(`${API_URL}?action=getAllData&email=${loggedInUser.email}&role=${loggedInUser.role}`);
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        setTasks(data.data.tasks || []);
-        setSurat(data.data.surat || []);
-        setDana(data.data.dana || []);
-      }
-    } catch (error) {
-      console.error("Gagal mengambil data:", error);
-    }
-    setIsLoadingData(false);
-  };
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-  useEffect(() => {
-    if (user) {
-      fetchAllData(user);
-    }
-  }, [user]);
-
-  // Login Handler (Real ke Spreadsheet)
-  const handleLogin = async (email) => {
-    try {
-      const res = await fetch(`${API_URL}?action=login&email=${email}`);
-      const data = await res.json();
-      
-      if (data.status === 'success') {
-        setUser(data.user);
-      } else {
-        alert(data.message || 'Akses Ditolak: Email Anda tidak terdaftar di Database Spreadsheet (Sheet "Users").');
-      }
-    } catch (error) {
-      alert('Terjadi kesalahan jaringan atau Apps Script belum di-deploy dengan benar.');
-      console.error(error);
-    }
-  };
-
-  if (!user) {
-    return <LoginScreen onLogin={handleLogin} />;
-  }
-
-  return (
-    <div className="flex h-screen bg-gray-50 font-sans">
-      <Sidebar user={user} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setUser(null)} />
-      <div className="flex-1 overflow-y-auto relative">
-        <Header user={user} />
+    <style>
+        body { font-family: 'Poppins', sans-serif; background: #e0f2fe; background-image: linear-gradient(to bottom right, #d1fae5, #e0f2fe); min-height: 100vh; margin: 0; overflow-x: hidden;}
         
-        {isLoadingData && (
-          <div className="absolute top-0 left-0 w-full bg-green-500 text-white text-xs font-bold text-center py-1 flex items-center justify-center gap-2 z-50">
-            <Loader2 className="w-4 h-4 animate-spin"/> Sinkronisasi data dengan Spreadsheet...
-          </div>
-        )}
-
-        <main className="p-6">
-          {activeTab === 'dashboard' && <Dashboard user={user} tasks={tasks} />}
-          {activeTab === 'kpi' && <KPIModule user={user} tasks={tasks} setTasks={setTasks} refreshData={() => fetchAllData(user)} />}
-          {activeTab === 'surat' && <SuratModule user={user} surat={surat} />}
-          {activeTab === 'dana' && <KeuanganModule user={user} dana={dana} />}
-          {activeTab === 'kalender' && <CalendarModule />}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-// --- LOGIN SCREEN ---
-function LoginScreen({ onLogin }) {
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  const handleGoogleLogin = async () => {
-    // Karena ini adalah preview environment tanpa Setup Client ID Google OAuth yang nyata,
-    // Kita memunculkan prompt untuk mensimulasikan pop-up "Pilih Akun Google" Anda.
-    const selectedEmail = window.prompt(
-      "SIMULASI GOOGLE LOGIN\n\nPilih/Masukkan email Google Anda untuk melanjutkan:", 
-      "email_anda@gmail.com"
-    );
-
-    if (selectedEmail && selectedEmail.trim() !== '') {
-      setIsLoggingIn(true);
-      await onLogin(selectedEmail.trim());
-      setIsLoggingIn(false);
-    }
-  };
-
-  return (
-    <div className="flex h-screen w-full bg-gray-50">
-      {/* Left Panel - Branding */}
-      <div className="hidden md:flex w-1/2 bg-green-500 text-white flex-col justify-center p-12 relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-green-400 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-lime-400 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+        /* Glassmorphism utility */
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05); }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); border-radius: 1rem; }
         
-        <div className="relative z-10 max-w-lg">
-          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-xl">
-            <span className="text-4xl">🌍</span>
-          </div>
-          <h1 className="text-5xl font-bold mb-4 leading-tight">TRACTION REPORT SYSTEM</h1>
-          <h2 className="text-3xl font-semibold text-lime-200 mb-6">SOBAT BUMI BOGOR</h2>
-          <p className="text-green-100 text-lg leading-relaxed">
-            Sistem Penilaian Kinerja, Evaluasi, dan Rapor Terintegrasi untuk seluruh fungsionaris Sobat Bumi Bogor.
-          </p>
-        </div>
-      </div>
-
-      {/* Right Panel - Login Form */}
-      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-8 bg-white shadow-[-20px_0_30px_-15px_rgba(0,0,0,0.1)] z-10 rounded-l-3xl">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">Login Fungsionaris</h2>
-            <p className="text-gray-500">Silakan masuk menggunakan akun Google Anda.</p>
-          </div>
-
-          <div className="space-y-6">
-            <button 
-              onClick={handleGoogleLogin}
-              disabled={isLoggingIn}
-              className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-50 transition-all font-semibold shadow-sm disabled:opacity-70"
-            >
-              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6" />
-              {isLoggingIn ? (
-                <span className="flex items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Memeriksa Akun...</span>
-              ) : (
-                'Lanjutkan dengan Google'
-              )}
-            </button>
-          </div>
-          
-          <div className="mt-8 p-4 bg-green-50 text-green-800 rounded-xl text-sm border border-green-100">
-            <p className="font-bold mb-1 flex items-center gap-2"><Users className="w-4 h-4"/> Akses Terbatas</p>
-            <p>Hanya email yang telah didaftarkan oleh Admin ke dalam database sistem yang dapat mengakses portal ini.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- COMPONENTS ---
-function Sidebar({ user, activeTab, setActiveTab, onLogout }) {
-  const menu = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'kpi', icon: Target, label: 'KPI & Tugas' },
-    { id: 'surat', icon: FileSignature, label: 'Pengajuan Surat' },
-    { id: 'dana', icon: DollarSign, label: 'Keuangan' },
-    { id: 'kalender', icon: CalendarIcon, label: 'Kalender' },
-  ];
-
-  return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-      <div className="p-6 flex items-center gap-3 border-b border-gray-100">
-        <span className="text-3xl">🌍</span>
-        <div>
-          <h1 className="font-bold text-gray-800 leading-tight">Sobat Bumi</h1>
-          <p className="text-xs text-green-600 font-semibold">Traction System</p>
-        </div>
-      </div>
-      <div className="flex-1 py-6 px-4 space-y-2">
-        {menu.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeTab === item.id 
-                ? 'bg-green-50 text-green-600 font-semibold shadow-sm' 
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-            }`}
-          >
-            <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-green-500' : ''}`} />
-            {item.label}
-          </button>
-        ))}
-      </div>
-      <div className="p-4 border-t border-gray-100">
-        <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-all font-medium">
-          <LogOut className="w-5 h-5" /> Logout
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Header({ user }) {
-  return (
-    <header className="bg-white px-8 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 z-20">
-      <h2 className="text-xl font-bold text-gray-800">Sistem Informasi</h2>
-      <div className="flex items-center gap-4">
-        <div className="text-right">
-          <p className="font-semibold text-gray-800">{user.name}</p>
-          <p className="text-xs text-green-600 font-medium bg-green-50 inline-block px-2 py-1 rounded-full">{user.posisi} ({user.role})</p>
-        </div>
-        <div className="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-md uppercase">
-          {user.name.charAt(0)}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-// --- MODULES ---
-
-function Dashboard({ user, tasks }) {
-  const isMaster = user.role === 'Master' || user.role === 'Admin';
-  
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center"><Target className="w-6 h-6"/></div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Pencapaian KPI</p>
-              <h3 className="text-2xl font-bold text-gray-800">85%</h3>
-            </div>
-          </div>
-          <div className="mt-4 bg-gray-100 rounded-full h-2 w-full overflow-hidden">
-            <div className="bg-green-500 h-2 w-[85%] rounded-full"></div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><CheckCircle className="w-6 h-6"/></div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Tugas Selesai</p>
-              <h3 className="text-2xl font-bold text-gray-800">{tasks.filter(t => t.status === 'Completed').length} / {tasks.length || 0}</h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center"><Users className="w-6 h-6"/></div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Kehadiran Rata-rata</p>
-              <h3 className="text-2xl font-bold text-gray-800">-</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Agenda Terdekat (Contoh)</h3>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500 italic">Data diambil dari modul kalender...</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">{isMaster ? 'Status Tugas Divisi' : 'Tugas Saya'}</h3>
-          <div className="space-y-3">
-            {tasks.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">Belum ada tugas.</p>
-            ) : tasks.slice(0,3).map(task => (
-              <div key={task.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                <div>
-                  <h4 className="font-semibold text-gray-800">{task.title}</h4>
-                  <p className="text-xs text-gray-500 mt-1">Deadline: {task.deadline}</p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  task.status === 'Pending' ? 'bg-orange-100 text-orange-700' :
-                  task.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
-                  {task.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function KPIModule({ user, tasks, setTasks, refreshData }) {
-  const [subTab, setSubTab] = useState('tugas');
-  
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="flex border-b border-gray-200">
-        <button 
-          onClick={() => setSubTab('tugas')}
-          className={`px-6 py-4 font-semibold text-sm transition-all ${subTab === 'tugas' ? 'text-green-600 border-b-2 border-green-500 bg-green-50/50' : 'text-gray-500 hover:bg-gray-50'}`}
-        >
-          Task Management (Tugas)
-        </button>
-        <button 
-          onClick={() => setSubTab('kehadiran')}
-          className={`px-6 py-4 font-semibold text-sm transition-all ${subTab === 'kehadiran' ? 'text-green-600 border-b-2 border-green-500 bg-green-50/50' : 'text-gray-500 hover:bg-gray-50'}`}
-        >
-          Kehadiran & Check-in
-        </button>
-      </div>
-      
-      <div className="p-6">
-        {subTab === 'tugas' && <TasksTab user={user} tasks={tasks} refreshData={refreshData} />}
-        {subTab === 'kehadiran' && <AttendanceTab user={user} />}
-      </div>
-    </div>
-  );
-}
-
-function AttendanceTab({ user }) {
-  const isMaster = user.role === 'Master' || user.role === 'Admin';
-  
-  return (
-    <div className="space-y-6">
-      <div className="p-4 bg-yellow-50 text-yellow-800 rounded-xl text-sm font-medium border border-yellow-200">
-        Modul Absensi sedang dikembangkan. Backend telah siap, namun integrasi upload foto (Base64) ke Drive sedang dipersiapkan.
-      </div>
-    </div>
-  );
-}
-
-function TasksTab({ user, tasks, refreshData }) {
-  const isAssigner = user.role === 'Master' || user.role === 'Admin';
-  const [isUpdating, setIsUpdating] = useState(false);
-  
-  // Real API Update Status
-  const updateStatus = async (taskId, newStatus) => {
-    setIsUpdating(true);
-    try {
-      const response = await fetch(`${API_URL}?action=updateTaskStatus&taskId=${taskId}&status=${newStatus}`);
-      const data = await response.json();
-      if(data.status === 'success') {
-        refreshData(); // Panggil ulang data dari API setelah update sukses
-      } else {
-        alert('Gagal update tugas');
-      }
-    } catch (error) {
-      alert('Error saat mengupdate tugas');
-    }
-    setIsUpdating(false);
-  };
-
-  return (
-    <div className="space-y-6">
-      {isAssigner && (
-        <div className="bg-green-50 p-6 rounded-xl border border-green-200">
-          <h3 className="font-bold text-green-800 mb-4">Beri Tugas Baru (Integrasi API Menyusul)</h3>
-          <p className="text-sm text-green-700">Saat ini tugas ditambahkan manual via Spreadsheet "Tugas". Fitur push dari sini akan segera terhubung.</p>
-        </div>
-      )}
-
-      <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-        Daftar Tugas Database {isUpdating && <Loader2 className="w-4 h-4 animate-spin text-green-500"/>}
-      </h3>
-      
-      <div className="space-y-4">
-        {tasks.length === 0 ? <p className="text-sm text-gray-500">Tidak ada tugas ditemukan dari Spreadsheet.</p> : null}
+        .view-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .view-section.active { display: block; }
         
-        {tasks.map(task => (
-          <div key={task.id} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all bg-white">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h4 className="font-bold text-lg text-gray-800">{task.title}</h4>
-                <p className="text-sm text-gray-500">Dari: {task.assigner} | Untuk: {task.assignee}</p>
-              </div>
-              <span className={`px-4 py-1.5 rounded-full text-xs font-bold border ${
-                task.status === 'Pending' ? 'bg-orange-50 text-orange-600 border-orange-200' :
-                task.status === 'In Progress' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                task.status === 'Under Review' ? 'bg-purple-50 text-purple-600 border-purple-200' :
-                'bg-green-50 text-green-600 border-green-200'
-              }`}>
-                {task.status}
-              </span>
-            </div>
-            <p className="text-gray-600 text-sm my-3 bg-gray-50 p-3 rounded-lg border border-gray-100">{task.desc}</p>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 10px; }
+
+        /* Toast */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease forwards; }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0;} to { transform: translateX(0); opacity: 1;} }
+
+        /* Camera View */
+        #camera-preview { width: 100%; max-width: 400px; border-radius: 12px; transform: scaleX(-1); }
+
+        /* Dropdown Animation */
+        .dropdown-enter { animation: dropdownIn 0.2s ease-out forwards; transform-origin: top right; }
+        @keyframes dropdownIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="text-gray-800 bg-gray-50 overflow-hidden h-screen w-screen">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-view" class="h-screen w-full flex bg-white z-50 absolute top-0 left-0 overflow-hidden">
+        <!-- Bagian Kiri (Branding) -->
+        <div class="hidden md:flex md:w-1/2 lg:w-[45%] bg-primary-600 p-12 flex-col justify-center items-center text-white relative overflow-hidden">
+            <!-- Elemen Dekoratif -->
+            <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-primary-500 rounded-full blur-3xl opacity-50"></div>
+            <div class="absolute -top-32 -right-32 w-96 h-96 bg-primary-700 rounded-full blur-3xl opacity-50"></div>
             
-            <div className="flex justify-between items-center mt-4 border-t border-gray-100 pt-4">
-              <span className="text-sm font-semibold text-red-500 flex items-center gap-1">
-                <Clock className="w-4 h-4"/> Deadline: {task.deadline}
-              </span>
-              
-              <div className="flex gap-2">
-                {/* User Actions */}
-                {user.email === task.assignee && task.status === 'Pending' && (
-                  <button disabled={isUpdating} onClick={() => updateStatus(task.id, 'In Progress')} className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-600 shadow-sm disabled:opacity-50">
-                    Accept Task
-                  </button>
-                )}
-                {user.email === task.assignee && task.status === 'In Progress' && (
-                  <button disabled={isUpdating} onClick={() => updateStatus(task.id, 'Under Review')} className="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-600 shadow-sm disabled:opacity-50">
-                    Submit (Lapor)
-                  </button>
-                )}
+            <div class="relative z-10 w-full max-w-md text-left">
+                <div class="bg-white/10 p-4 rounded-2xl inline-flex items-center justify-center mb-8 backdrop-blur-md border border-white/20 shadow-lg">
+                    <i class="ph ph-leaf text-5xl text-white"></i>
+                </div>
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4 leading-tight tracking-tight text-white">RAPOR BEM</h1>
+                <h2 class="text-xl lg:text-2xl font-medium text-primary-200 mb-6">Sobat Bumi Bogor</h2>
+                <p class="text-primary-50 text-sm lg:text-base leading-relaxed opacity-90">
+                    Sistem Penilaian Kinerja, Evaluasi, dan Rapor Terintegrasi untuk seluruh fungsionaris Sobat Bumi Bogor.
+                </p>
+            </div>
+            
+            <div class="relative z-10 mt-auto pt-12 w-full max-w-md text-left">
+                <p class="text-xs text-primary-200 font-medium">Dikelola oleh Departemen PSDM</p>
+                <p class="text-xs text-primary-200 mt-1">© 2026 Sobat Bumi Bogor</p>
+            </div>
+        </div>
+
+        <!-- Bagian Kanan (Form Login) -->
+        <div class="w-full md:w-1/2 lg:w-[55%] flex flex-col items-center justify-center p-6 sm:p-12 relative bg-gray-50/50">
+            
+            <!-- Mobile Branding (Hanya muncul di HP) -->
+            <div class="md:hidden flex flex-col items-center mb-8 text-center mt-8">
+                <div class="bg-primary-100 p-4 rounded-full inline-flex items-center justify-center mb-4 text-primary-600 shadow-sm">
+                    <i class="ph ph-leaf text-4xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">RAPOR BEM</h1>
+                <h2 class="text-sm font-medium text-gray-500">Sobat Bumi Bogor</h2>
+            </div>
+
+            <!-- Form Container -->
+            <div class="w-full max-w-md bg-white p-8 sm:p-10 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative z-10">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-2">Selamat Datang 👋</h2>
+                <p class="text-sm text-gray-500 mb-8">Masuk menggunakan email Google terdaftar.</p>
                 
-                {/* Admin Actions */}
-                {user.email === task.assigner && task.status === 'Under Review' && (
-                  <div className="flex gap-2 items-center">
-                    <button disabled={isUpdating} onClick={() => updateStatus(task.id, 'Revision')} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-200">
-                      Revisi
+                <form id="login-form" onsubmit="event.preventDefault(); doRealLogin();" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Email Google</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="ph ph-envelope-simple text-gray-400 text-lg"></i>
+                            </div>
+                            <input type="email" id="login-email" required placeholder="emailanda@gmail.com" class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm transition-all outline-none text-gray-700 font-medium">
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-2 pb-6">
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox" class="rounded text-primary-500 focus:ring-primary-500 border-gray-300 w-4 h-4 cursor-pointer">
+                            <span class="text-xs text-gray-600 group-hover:text-gray-800 transition-colors font-medium">Ingat Saya</span>
+                        </label>
+                        <a href="#" class="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors">Butuh Bantuan?</a>
+                    </div>
+
+                    <div class="relative flex items-center justify-center mb-6">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-100"></div></div>
+                        <div class="relative bg-white px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Login via SSO</div>
+                    </div>
+                    
+                    <!-- Login Button -->
+                    <button type="submit" id="btn-login" class="w-full bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3.5 px-4 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 active:scale-[0.98]">
+                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                        <span>Masuk dengan Google</span>
                     </button>
-                    <button disabled={isUpdating} onClick={() => updateStatus(task.id, 'Completed')} className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-600 shadow-sm flex items-center gap-1">
-                      <Check className="w-4 h-4"/> Nilai Selesai
-                    </button>
-                  </div>
-                )}
-              </div>
+                </form>
             </div>
-          </div>
-        ))}
-      </div>
+            
+            <!-- Mobile footer -->
+            <p class="md:hidden mt-8 text-xs text-gray-400 mb-4">© 2026 Sobat Bumi Bogor</p>
+        </div>
     </div>
-  );
-}
 
-function SuratModule({ user, surat }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800">Sistem Pengajuan Surat</h2>
-        <button className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-green-600 shadow-sm">
-          <Plus className="w-5 h-5"/> Buat Pengajuan
-        </button>
-      </div>
-
-      <div className="overflow-x-auto">
-        {surat.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-6">Belum ada data surat di Spreadsheet.</p>
-        ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-sm border-b border-gray-200">
-                <th className="p-4 font-semibold">Tgl Pengajuan</th>
-                <th className="p-4 font-semibold">Pemohon</th>
-                <th className="p-4 font-semibold">Jenis & Perihal</th>
-                <th className="p-4 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {surat.map(s => (
-                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="p-4 text-sm text-gray-700">{s.timestamp}</td>
-                  <td className="p-4 text-sm font-medium text-gray-800">{s.pemohon}</td>
-                  <td className="p-4 text-sm text-gray-600">
-                    <span className="font-bold text-gray-800">{s.jenis}</span><br/>{s.perihal}
-                  </td>
-                  <td className="p-4">
-                    <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">{s.status}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function KeuanganModule({ user, dana }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800">Pengajuan Pencairan & Reimbursement</h2>
-        <button className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-green-600 shadow-sm">
-          <DollarSign className="w-5 h-5"/> Ajukan Dana
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {dana.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-6">Belum ada pengajuan keuangan di Spreadsheet.</p>
-        ) : (
-          dana.map(d => (
-            <div key={d.id} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all bg-white relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
-              <div className="flex justify-between items-start">
+    <!-- MAIN APP SHELL -->
+    <div id="app-shell" class="hidden flex h-screen w-full overflow-hidden bg-[#e0f2fe]" style="background-image: linear-gradient(to bottom right, #d1fae5, #e0f2fe);">
+        
+        <!-- Sidebar Desktop -->
+        <aside class="glass w-64 flex-shrink-0 border-r border-white/40 flex flex-col hidden md:flex transition-all">
+            <div class="p-6 flex items-center gap-3 border-b border-white/40">
+                <i class="ph ph-leaf text-3xl text-primary-600"></i>
                 <div>
-                  <h4 className="font-bold text-lg text-gray-800">{d.divisi}</h4>
-                  <p className="text-sm text-gray-500 mt-1">Deadline Pencairan: {d.deadline}</p>
+                    <h2 class="font-bold text-gray-800 leading-tight">TRS</h2>
+                    <p class="text-xs text-gray-500">Sobat Bumi Bogor</p>
                 </div>
-                <div className="text-right">
-                  <h3 className="font-bold text-xl text-green-600">Rp {d.nominal}</h3>
-                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold inline-block mt-2">{d.status}</span>
-                </div>
-              </div>
             </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
+            
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" id="sidebar-nav">
+                <!-- Nav items generated by JS based on role -->
+            </nav>
 
-function CalendarModule() {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-        <CalendarIcon className="w-6 h-6 text-green-500"/> Kalender Organisasi
-      </h2>
-      <p className="mb-4 text-sm text-gray-600">Modul Kalender API sedang dihubungkan dengan Google Calendar & Database.</p>
+            <div class="p-4 border-t border-white/40">
+                <button onclick="logout()" class="flex items-center gap-3 w-full p-3 text-red-500 hover:bg-red-50 rounded-xl transition">
+                    <i class="ph ph-sign-out text-xl"></i>
+                    <span class="font-medium">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+            
+            <!-- Topbar -->
+            <header class="glass h-16 flex items-center justify-between px-6 border-b border-white/40 z-10">
+                <div class="flex items-center gap-4">
+                    <button id="mobile-menu-btn" class="md:hidden text-gray-600 hover:text-primary-600">
+                        <i class="ph ph-list text-2xl"></i>
+                    </button>
+                    <h2 id="page-title" class="font-semibold text-lg text-gray-800">Dashboard</h2>
+                </div>
+                
+                <div class="flex items-center gap-4 relative">
+                    <!-- Notification Bell -->
+                    <button onclick="toggleNotifications()" class="relative p-2 text-gray-500 hover:text-primary-600 transition bg-white/50 rounded-full focus:outline-none">
+                        <i class="ph ph-bell text-xl"></i>
+                        <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                    </button>
+
+                    <!-- Notification Dropdown -->
+                    <div id="notif-dropdown" class="hidden absolute top-12 right-12 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 dropdown-enter overflow-hidden">
+                        <div class="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <span class="font-semibold text-sm">Notifikasi Baru</span>
+                            <span class="text-[10px] bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">2</span>
+                        </div>
+                        <div class="max-h-64 overflow-y-auto">
+                            <button class="w-full text-left p-3 border-b border-gray-50 hover:bg-gray-50 transition flex gap-3 items-start">
+                                <div class="mt-0.5 text-accent"><i class="ph ph-kanban text-lg"></i></div>
+                                <div><p class="text-xs font-medium text-gray-800">Tugas Baru Diberikan</p><p class="text-[10px] text-gray-500 mt-0.5">Buat Proposal Sponsorship</p></div>
+                            </button>
+                            <button class="w-full text-left p-3 hover:bg-gray-50 transition flex gap-3 items-start">
+                                <div class="mt-0.5 text-green-500"><i class="ph ph-check-circle text-lg"></i></div>
+                                <div><p class="text-xs font-medium text-gray-800">Pencairan Dana Disetujui</p><p class="text-[10px] text-gray-500 mt-0.5">Proyek Ciliwung Rp500.000</p></div>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 pl-4 border-l border-gray-300">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-semibold text-gray-800" id="user-name-display">Nama User</p>
+                            <p class="text-xs text-primary-600 font-medium" id="user-role-display">Role</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold shadow-sm">
+                            <span id="user-initial">U</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable Content Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-4 md:p-6 pb-24 md:pb-6 relative z-0">
+                
+                <!-- VIEWS -->
+
+                <!-- 1. DASHBOARD -->
+                <div id="dashboard-view" class="view-section">
+                    
+                    <!-- Top Stats (Master/Admin) -->
+                    <div id="admin-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="glass-card p-4 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500"><i class="ph ph-users text-2xl"></i></div>
+                            <div><p class="text-xs text-gray-500">Total Anggota</p><p class="text-xl font-bold">124</p></div>
+                        </div>
+                        <div class="glass-card p-4 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-500"><i class="ph ph-check-circle text-2xl"></i></div>
+                            <div><p class="text-xs text-gray-500">Hadir Hari Ini</p><p class="text-xl font-bold">89%</p></div>
+                        </div>
+                        <div class="glass-card p-4 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-500"><i class="ph ph-list-checks text-2xl"></i></div>
+                            <div><p class="text-xs text-gray-500">Task Selesai</p><p class="text-xl font-bold">45</p></div>
+                        </div>
+                        <div class="glass-card p-4 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-500"><i class="ph ph-wallet text-2xl"></i></div>
+                            <div><p class="text-xs text-gray-500">Pengajuan Dana</p><p class="text-xl font-bold">8</p></div>
+                        </div>
+                    </div>
+
+                    <!-- User Stats -->
+                    <div id="user-stats" class="hidden glass-card p-6 mb-6">
+                        <h3 class="font-semibold text-lg mb-4">Progress Individu Bulan Ini</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-gray-500">KPI Pribadi</span><span class="font-bold text-primary-600">85%</span></div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-primary-500 h-2.5 rounded-full" style="width: 85%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-gray-500">Tingkat Kehadiran</span><span class="font-bold text-blue-500">92%</span></div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-blue-500 h-2.5 rounded-full" style="width: 92%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-gray-500">Penyelesaian Task</span><span class="font-bold text-orange-500">4/5 Selesai</span></div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-orange-500 h-2.5 rounded-full" style="width: 80%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Charts -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="glass-card p-5 h-full">
+                                <h3 id="chart-title" class="font-semibold text-gray-700 mb-4">Performa (KPI & Task)</h3>
+                                <div class="relative h-[300px] w-full">
+                                    <canvas id="performanceChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Upcoming Agenda -->
+                        <div class="space-y-6">
+                            <div class="glass-card p-5">
+                                <h3 class="font-semibold text-gray-700 mb-4">Agenda Terdekat</h3>
+                                <div class="space-y-3">
+                                    <div class="flex gap-3 items-start p-3 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
+                                        <div class="text-red-500 mt-0.5"><i class="ph ph-calendar-blank"></i></div>
+                                        <div><p class="text-sm font-semibold text-gray-800">Deadline LPJ Sosialisasi</p><p class="text-xs text-gray-500">Hari ini, 23:59</p></div>
+                                    </div>
+                                    <div class="flex gap-3 items-start p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+                                        <div class="text-blue-500 mt-0.5"><i class="ph ph-users-three"></i></div>
+                                        <div><p class="text-sm font-semibold text-gray-800">Rapat Rutin Bulanan</p><p class="text-xs text-gray-500">Besok, 16:00 WIB</p></div>
+                                    </div>
+                                    <div class="flex gap-3 items-start p-3 bg-green-50 border-l-4 border-green-500 rounded-r-lg">
+                                        <div class="text-green-500 mt-0.5"><i class="ph ph-plant"></i></div>
+                                        <div><p class="text-sm font-semibold text-gray-800">Proyek Lapangan Ciliwung</p><p class="text-xs text-gray-500">Sabtu, 08:00 WIB</p></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. KEHADIRAN (KPI) -->
+                <div id="kehadiran-view" class="view-section">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Check In Card -->
+                        <div class="glass-card p-6 text-center flex flex-col items-center">
+                            <h3 class="font-semibold text-xl mb-2">Check-In Kehadiran</h3>
+                            <p class="text-sm text-gray-500 mb-6" id="current-datetime">Senin, 10 Oktober 2026 - 08:00 WIB</p>
+                            
+                            <div class="bg-gray-100 rounded-2xl w-full max-w-sm aspect-video mb-4 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 relative">
+                                <video id="camera-preview" autoplay playsinline class="hidden"></video>
+                                <canvas id="camera-canvas" class="hidden w-full h-full object-cover"></canvas>
+                                <div id="camera-placeholder" class="text-gray-400 flex flex-col items-center">
+                                    <i class="ph ph-camera text-4xl mb-2"></i>
+                                    <span class="text-sm">Kamera belum aktif</span>
+                                </div>
+                            </div>
+                            
+                            <select id="kegiatan-select" class="w-full max-w-sm px-4 py-2 bg-white border border-gray-200 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                                <option value="">Pilih Kegiatan/Jadwal...</option>
+                                <option value="Rapat Rutin">Rapat Rutin Bulanan</option>
+                                <option value="Proyek Lapangan">Proyek Lapangan</option>
+                            </select>
+
+                            <div class="flex gap-3 w-full max-w-sm">
+                                <button onclick="startCamera()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl text-sm font-medium transition">
+                                    <i class="ph ph-video-camera mr-1"></i> Buka Kamera
+                                </button>
+                                <button onclick="submitKehadiran()" id="btn-checkin" class="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 rounded-xl text-sm font-medium transition opacity-50 cursor-not-allowed" disabled>
+                                    <i class="ph ph-check-circle mr-1"></i> Check-In
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Schedule & History -->
+                        <div class="glass-card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-semibold text-lg">Jadwal Kehadiran</h3>
+                                <button class="admin-only text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-medium hover:bg-primary-200 transition">
+                                    + Buat Jadwal
+                                </button>
+                            </div>
+                            
+                            <div class="space-y-3 mb-6">
+                                <!-- Mock Data -->
+                                <div class="p-3 border border-gray-100 bg-white/50 rounded-xl flex justify-between items-center">
+                                    <div><p class="font-medium text-sm">Rapat Rutin Bulanan</p><p class="text-xs text-gray-500">Hari ini, 16:00 WIB • Sekretariat</p></div>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-lg font-medium">Pending</span>
+                                </div>
+                            </div>
+
+                            <h3 class="font-semibold text-lg mb-4">Riwayat Anda</h3>
+                            <div class="space-y-3">
+                                <div class="p-3 border border-gray-100 bg-white/50 rounded-xl flex justify-between items-center">
+                                    <div><p class="font-medium text-sm">Proyek Lapangan</p><p class="text-xs text-gray-500">Kemarin, 08:00 WIB</p></div>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-lg font-medium">Hadir</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. TASK MANAGEMENT -->
+                <div id="task-view" class="view-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-semibold text-lg">Manajemen Tugas</h3>
+                        <button onclick="showTaskModal()" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm flex items-center gap-2">
+                            <i class="ph ph-plus-circle text-lg"></i> Buat Tugas
+                        </button>
+                    </div>
+
+                    <!-- Kanban / List View -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 overflow-x-auto pb-4">
+                        <!-- Pending -->
+                        <div class="glass-card bg-gray-50/50 p-4 min-w-[250px]">
+                            <div class="flex items-center gap-2 mb-4"><div class="w-3 h-3 rounded-full bg-gray-400"></div><h4 class="font-semibold text-sm">Pending</h4><span class="ml-auto text-xs bg-gray-200 px-2 py-0.5 rounded-full">1</span></div>
+                            <div class="space-y-3" id="task-list-pending">
+                                <!-- Card (Clickable to open Detail) -->
+                                <div onclick="showTaskDetail('Buat Proposal Sponsorship', 'Susun proposal untuk pengajuan ke Pertamina. Sertakan RAB dan struktur panitia yang jelas.', '12 Okt 2026', 'Tinggi', 'Pending')" class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition group">
+                                    <div class="flex justify-between items-start mb-2"><span class="text-[10px] uppercase font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">High Priority</span></div>
+                                    <h5 class="text-sm font-semibold mb-1 group-hover:text-primary-600 transition">Buat Proposal Sponsorship</h5>
+                                    <p class="text-xs text-gray-500 mb-3 line-clamp-2">Susun proposal untuk pengajuan ke Pertamina.</p>
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center gap-1 text-[10px] text-gray-500"><i class="ph ph-calendar-blank"></i> 12 Okt</div>
+                                        <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-[10px] text-primary-700 font-bold border border-white shadow-sm">B</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- In Progress -->
+                        <div class="glass-card bg-blue-50/50 p-4 min-w-[250px]">
+                            <div class="flex items-center gap-2 mb-4"><div class="w-3 h-3 rounded-full bg-blue-400"></div><h4 class="font-semibold text-sm">In Progress</h4></div>
+                            <div class="space-y-3" id="task-list-progress">
+                                <div onclick="showTaskDetail('Desain Feeds Instagram', 'Desain 3 feeds untuk proker turun desa minggu ini. Sesuaikan dengan brand guideline.', '15 Okt 2026', 'Normal', 'In Progress')" class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition group">
+                                    <div class="flex justify-between items-start mb-2"><span class="text-[10px] uppercase font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded">Normal Priority</span></div>
+                                    <h5 class="text-sm font-semibold mb-1 group-hover:text-blue-600 transition">Desain Feeds Instagram</h5>
+                                    <div class="flex justify-between items-center mt-3">
+                                        <div class="flex items-center gap-1 text-[10px] text-gray-500"><i class="ph ph-calendar-blank"></i> 15 Okt</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Under Review -->
+                        <div class="glass-card bg-yellow-50/50 p-4 min-w-[250px]">
+                            <div class="flex items-center gap-2 mb-4"><div class="w-3 h-3 rounded-full bg-yellow-400"></div><h4 class="font-semibold text-sm">Under Review</h4></div>
+                            <div class="space-y-3" id="task-list-review"></div>
+                        </div>
+
+                        <!-- Completed -->
+                        <div class="glass-card bg-green-50/50 p-4 min-w-[250px]">
+                            <div class="flex items-center gap-2 mb-4"><div class="w-3 h-3 rounded-full bg-primary-400"></div><h4 class="font-semibold text-sm">Completed</h4></div>
+                            <div class="space-y-3" id="task-list-completed"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. PENGAJUAN SURAT -->
+                <div id="surat-view" class="view-section">
+                    <div class="glass-card p-6 mb-6">
+                        <h3 class="font-semibold text-lg mb-4">Form Pengajuan Surat</h3>
+                        <form id="form-surat" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="submitSurat(event)">
+                            <div><label class="block text-xs font-medium text-gray-700 mb-1">Jenis Surat</label>
+                            <select required class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"><option value="">Pilih Jenis Surat</option><option>Surat Tugas</option><option>Surat Undangan</option><option>Surat Keterangan Aktif</option><option>Surat Izin</option></select></div>
+                            <div><label class="block text-xs font-medium text-gray-700 mb-1">Perihal</label>
+                            <input type="text" required class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500" placeholder="Contoh: Undangan Narasumber"></div>
+                            <div class="md:col-span-2"><label class="block text-xs font-medium text-gray-700 mb-1">Draft / Keterangan Isi</label>
+                            <textarea rows="3" required class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500" placeholder="Tuliskan poin-poin yang harus ada di surat..."></textarea></div>
+                            <div class="md:col-span-2 flex justify-end">
+                                <button type="submit" id="btn-submit-surat" class="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2">Ajukan Surat</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-card overflow-hidden">
+                        <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 class="font-semibold">Riwayat Pengajuan</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-gray-50/50 text-gray-600 text-xs">
+                                    <tr><th class="p-4 font-medium">Tanggal</th><th class="p-4 font-medium">Jenis Surat</th><th class="p-4 font-medium">Pemohon</th><th class="p-4 font-medium">Status</th><th class="p-4 font-medium">Aksi</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-50">
+                                        <td class="p-4">10 Okt 2026</td><td class="p-4">Surat Izin</td><td class="p-4">Budi (Humas)</td>
+                                        <td class="p-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">Menunggu Verifikasi</span></td>
+                                        <td class="p-4"><button class="text-accent text-xs">Detail</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. KEUANGAN (Dana & Reimburse) - Disederhanakan dalam 1 View untuk efisiensi UI -->
+                <div id="dana-view" class="view-section">
+                    <!-- Tab toggle (Dana / Reimburse) -->
+                    <div class="flex gap-2 mb-6 p-1 bg-white/50 rounded-xl inline-flex glass border-white/50">
+                        <button onclick="switchTab('tab-dana')" id="btn-tab-dana" class="px-4 py-2 rounded-lg text-sm font-medium bg-primary-500 text-white shadow-sm transition">Pengajuan Dana</button>
+                        <button onclick="switchTab('tab-reimburse')" id="btn-tab-reimburse" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Reimburse</button>
+                    </div>
+
+                    <!-- Dana Form -->
+                    <div id="tab-dana" class="block">
+                        <div class="glass-card p-6 mb-6">
+                            <h3 class="font-semibold text-lg mb-4">Pengajuan Pencairan Dana Program</h3>
+                            <form class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="event.preventDefault(); showToast('Pengajuan dana berhasil', 'success');">
+                                <div><label class="block text-xs font-medium text-gray-700 mb-1">Nama Program/Kegiatan</label>
+                                <input type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"></div>
+                                <div><label class="block text-xs font-medium text-gray-700 mb-1">Nominal (Rp)</label>
+                                <input type="number" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"></div>
+                                <div class="md:col-span-2"><label class="block text-xs font-medium text-gray-700 mb-1">Rincian RAB</label>
+                                <textarea rows="3" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="Rincian penggunaan dana..."></textarea></div>
+                                <div><label class="block text-xs font-medium text-gray-700 mb-1">Deadline Pencairan</label>
+                                <input type="date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"></div>
+                                <div class="md:col-span-2 flex justify-end mt-2">
+                                    <button type="submit" class="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-xl text-sm font-medium transition">Ajukan Dana</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Reimburse Form -->
+                    <div id="tab-reimburse" class="hidden">
+                        <div class="glass-card p-6 mb-6 border-l-4 border-blue-500">
+                            <h3 class="font-semibold text-lg mb-4">Pengajuan Reimburse Dana</h3>
+                            <form class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="event.preventDefault(); showToast('Reimburse diajukan. Bukti akan diupload ke Drive.', 'success');">
+                                <div><label class="block text-xs font-medium text-gray-700 mb-1">Keperluan Pengeluaran</label>
+                                <input type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"></div>
+                                <div><label class="block text-xs font-medium text-gray-700 mb-1">Total Nominal (Rp)</label>
+                                <input type="number" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"></div>
+                                <div class="md:col-span-2"><label class="block text-xs font-medium text-gray-700 mb-1">Upload Bukti / Nota (Foto/PDF)</label>
+                                <input type="file" accept="image/*,.pdf" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"></div>
+                                <div class="md:col-span-2 flex justify-end mt-2">
+                                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium transition">Ajukan Reimburse</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Table History (Shared context, mock data) -->
+                    <div class="glass-card overflow-hidden">
+                        <div class="p-4 border-b border-gray-100"><h3 class="font-semibold">Riwayat Keuangan</h3></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-gray-50/50 text-gray-600 text-xs">
+                                    <tr><th class="p-4">Tanggal</th><th class="p-4">Tipe</th><th class="p-4">Keperluan</th><th class="p-4">Nominal</th><th class="p-4">Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-50"><td class="p-4">09 Okt 2026</td><td class="p-4">Dana</td><td class="p-4">Proyek Ciliwung</td><td class="p-4">Rp 500.000</td><td class="p-4"><span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">Disetujui PO</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. KALENDER -->
+                <div id="kalender-view" class="view-section h-full">
+                    <div class="glass-card p-6 h-full min-h-[600px] flex flex-col">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-lg">Kalender Organisasi</h3>
+                            <div class="flex gap-2 text-xs">
+                                <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-red-500"></div> Deadline</span>
+                                <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-green-500"></div> Kegiatan</span>
+                                <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-blue-500"></div> Rapat</span>
+                            </div>
+                        </div>
+                        <div id="calendar" class="flex-1 bg-white/50 rounded-xl p-2"></div>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- Bottom Navigation (Mobile) -->
+            <nav class="md:hidden glass absolute bottom-0 w-full h-16 flex justify-around items-center border-t border-white/40 z-20 pb-safe">
+                <button onclick="navigate('dashboard')" class="nav-btn p-2 text-gray-500 hover:text-primary-600 flex flex-col items-center gap-1" data-target="dashboard">
+                    <i class="ph ph-squares-four text-xl"></i><span class="text-[10px] font-medium">Home</span>
+                </button>
+                <button onclick="navigate('kehadiran')" class="nav-btn p-2 text-gray-500 hover:text-primary-600 flex flex-col items-center gap-1" data-target="kehadiran">
+                    <i class="ph ph-hand-tap text-xl"></i><span class="text-[10px] font-medium">Absen</span>
+                </button>
+                <button onclick="navigate('task')" class="nav-btn p-2 bg-primary-500 text-white rounded-full shadow-lg transform -translate-y-4 w-12 h-12 flex items-center justify-center border-4 border-[#e0f2fe]" data-target="task">
+                    <i class="ph ph-kanban text-xl"></i>
+                </button>
+                <button onclick="navigate('surat')" class="nav-btn p-2 text-gray-500 hover:text-primary-600 flex flex-col items-center gap-1" data-target="surat">
+                    <i class="ph ph-envelope-simple text-xl"></i><span class="text-[10px] font-medium">Surat</span>
+                </button>
+                <button onclick="navigate('kalender')" class="nav-btn p-2 text-gray-500 hover:text-primary-600 flex flex-col items-center gap-1" data-target="kalender">
+                    <i class="ph ph-calendar text-xl"></i><span class="text-[10px] font-medium">Jadwal</span>
+                </button>
+            </nav>
+
+        </div>
     </div>
-  );
-}
+
+    <!-- Modals -->
+    <!-- Add Task Modal -->
+    <div id="modal-task" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="font-semibold text-gray-800">Buat Tugas Baru</h3>
+                <button onclick="closeModal('modal-task')" class="text-gray-400 hover:text-gray-600 focus:outline-none"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <form class="p-5 space-y-4" onsubmit="event.preventDefault(); showToast('Tugas ditambahkan!', 'success'); closeModal('modal-task');">
+                <div><label class="block text-xs font-medium text-gray-700 mb-1">Judul Tugas</label>
+                <input type="text" required class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary-500 focus:outline-none"></div>
+                <div><label class="block text-xs font-medium text-gray-700 mb-1">Penanggung Jawab (PIC)</label>
+                <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none"><option>Seluruh Anggota Divisi</option><option>Budi</option><option>Siti</option></select></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-medium text-gray-700 mb-1">Deadline</label>
+                    <input type="date" required class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none"></div>
+                    <div><label class="block text-xs font-medium text-gray-700 mb-1">Prioritas</label>
+                    <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none"><option>Normal</option><option>Tinggi</option></select></div>
+                </div>
+                <div><label class="block text-xs font-medium text-gray-700 mb-1">Deskripsi</label>
+                <textarea rows="3" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none"></textarea></div>
+                <button type="submit" class="w-full bg-primary-500 hover:bg-primary-600 text-white py-2.5 rounded-xl font-medium transition mt-2">Kirim Tugas</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Detail Modal -->
+    <div id="modal-task-detail" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform scale-95 transition-transform">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-start bg-gray-50">
+                <div>
+                    <span id="detail-priority" class="text-[10px] uppercase font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded inline-block mb-2">High Priority</span>
+                    <h3 id="detail-title" class="font-semibold text-lg text-gray-800 leading-tight">Buat Proposal</h3>
+                </div>
+                <button onclick="closeModal('modal-task-detail')" class="text-gray-400 hover:text-gray-600 focus:outline-none"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <div class="p-5">
+                <div class="flex items-center gap-4 mb-5 text-sm">
+                    <div class="flex items-center gap-1.5 text-gray-500"><i class="ph ph-calendar-blank text-lg"></i> <span id="detail-deadline">12 Okt</span></div>
+                    <div class="flex items-center gap-1.5 text-gray-500"><i class="ph ph-kanban text-lg"></i> <span id="detail-status" class="font-medium text-gray-800">Pending</span></div>
+                </div>
+                
+                <h4 class="text-xs font-semibold text-gray-800 mb-1">Deskripsi Tugas</h4>
+                <p id="detail-desc" class="text-sm text-gray-600 mb-6 bg-gray-50 p-3 rounded-lg border border-gray-100">Susun proposal untuk pengajuan...</p>
+                
+                <div class="flex gap-3 pt-2 border-t border-gray-100">
+                    <button class="flex-1 bg-accent hover:bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium transition" onclick="showToast('Tugas Diterima, masuk ke In Progress', 'success'); closeModal('modal-task-detail');">Terima Tugas (Accept)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        // --- State Management ---
+        const AppState = {
+            user: null, // { name, role, email, divisi }
+            currentView: 'login',
+            chartInstance: null,
+            calendarInstance: null,
+            cameraStream: null
+        };
+
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyjO5wNZj6UegAyVndpkHYHFxbWz0HaZkgnpxg6yWl8_ZzIM1aTrAqvovU0Q37LgYRA/exec';
+
+        // Konfigurasi Navigasi Sidebar berdasarkan Role
+        const navMenu = [
+            { id: 'dashboard', icon: 'squares-four', label: 'Dashboard', roles: ['Master', 'Admin', 'User'] },
+            { id: 'kehadiran', icon: 'hand-tap', label: 'Kehadiran (KPI)', roles: ['Master', 'Admin', 'User'] },
+            { id: 'task', icon: 'kanban', label: 'Task Management', roles: ['Master', 'Admin', 'User'] },
+            { id: 'surat', icon: 'envelope-simple', label: 'Administrasi Surat', roles: ['Master', 'Admin', 'User'] },
+            { id: 'dana', icon: 'wallet', label: 'Keuangan (Dana & Reimb)', roles: ['Master', 'Admin', 'User'] },
+            { id: 'kalender', icon: 'calendar', label: 'Kalender Organisasi', roles: ['Master', 'Admin', 'User'] },
+            { id: 'laporan', icon: 'chart-bar', label: 'Laporan Master', roles: ['Master'] },
+        ];
+
+        // --- Core Functions ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="ph ${type === 'success' ? 'ph-check-circle' : 'ph-warning-circle'} text-xl"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        async function doRealLogin() {
+            const emailInput = document.getElementById('login-email');
+            const btn = document.getElementById('btn-login');
+            const email = emailInput.value.trim();
+            
+            if (!email) {
+                return showToast('Silakan masukkan email!', 'error');
+            }
+
+            // Ubah state tombol menjadi loading
+            btn.disabled = true;
+            btn.innerHTML = `<i class="ph ph-spinner animate-spin text-xl"></i> <span>Memverifikasi...</span>`;
+
+            try {
+                // Melakukan request POST ke Google Apps Script secara real-time
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        // Gunakan text/plain untuk menghindari CORS preflight error di GAS
+                        'Content-Type': 'text/plain;charset=utf-8', 
+                    },
+                    body: JSON.stringify({
+                        action: 'login',
+                        email: email
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Set Data User dari Database
+                    AppState.user = {
+                        name: result.user.nama,
+                        role: result.user.role,
+                        email: result.user.email,
+                        divisi: result.user.divisi
+                    };
+                    
+                    // Update UI User
+                    document.getElementById('user-name-display').textContent = AppState.user.name;
+                    document.getElementById('user-role-display').textContent = AppState.user.role;
+                    document.getElementById('user-initial').textContent = AppState.user.name.charAt(0).toUpperCase();
+                    
+                    // Render Sidebar Sesuai Hak Akses
+                    renderSidebar();
+                    
+                    // Update Judul Chart
+                    const chartTitle = document.getElementById('chart-title');
+                    if(AppState.user.role === 'Master' || AppState.user.role === 'Admin') {
+                        document.getElementById('admin-stats').classList.remove('hidden');
+                        document.getElementById('user-stats').classList.add('hidden');
+                        document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                        chartTitle.textContent = "Performa Seluruh Divisi";
+                    } else {
+                        document.getElementById('admin-stats').classList.add('hidden');
+                        document.getElementById('user-stats').classList.remove('hidden');
+                        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+                        chartTitle.textContent = "Performa Anggota Divisi Anda";
+                    }
+
+                    // Pindah ke Halaman Dashboard Instan tanpa scroll
+                    document.getElementById('login-view').classList.remove('flex'); 
+                    document.getElementById('login-view').classList.add('hidden');
+                    
+                    const appShell = document.getElementById('app-shell');
+                    appShell.classList.remove('hidden');
+                    appShell.classList.add('flex');
+                    
+                    showToast(`Selamat datang, ${AppState.user.name}!`, 'success');
+                    navigate('dashboard');
+                } else {
+                    // Tampilkan pesan error jika email salah / tidak terdaftar
+                    showToast(result.message || 'Email tidak terdaftar di sistem!', 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('Gagal terhubung ke database. Periksa koneksi Anda.', 'error');
+            } finally {
+                // Kembalikan state tombol jika gagal
+                btn.disabled = false;
+                btn.innerHTML = `<img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google"><span>Masuk dengan Google</span>`;
+            }
+        }
+
+        function logout() {
+            stopCamera();
+            AppState.user = null;
+            document.getElementById('app-shell').classList.add('hidden');
+            document.getElementById('app-shell').classList.remove('flex');
+            
+            const loginView = document.getElementById('login-view');
+            loginView.classList.remove('hidden');
+            loginView.classList.add('flex');
+            
+            document.getElementById('login-email').value = '';
+            
+            showToast('Berhasil logout', 'success');
+        }
+
+        function renderSidebar() {
+            const sidebar = document.getElementById('sidebar-nav');
+            sidebar.innerHTML = '';
+            navMenu.forEach(menu => {
+                if(menu.roles.includes(AppState.user.role)) {
+                    const btn = document.createElement('button');
+                    btn.className = `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-left text-sm font-medium text-gray-600 hover:bg-white hover:text-primary-600 nav-btn-desktop`;
+                    btn.dataset.target = menu.id;
+                    btn.innerHTML = `<i class="ph ph-${menu.icon} text-xl"></i> <span>${menu.label}</span>`;
+                    btn.onclick = () => navigate(menu.id);
+                    sidebar.appendChild(btn);
+                }
+            });
+        }
+
+        function navigate(viewId) {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            // Show target view
+            const targetView = document.getElementById(`${viewId}-view`);
+            if(targetView) targetView.classList.add('active');
+            
+            // Update Title
+            const titleMap = { 'dashboard':'Dashboard', 'kehadiran':'Absensi & KPI', 'task':'Task Management', 'surat':'Administrasi Surat', 'dana':'Keuangan & Reimburse', 'kalender':'Kalender Organisasi' };
+            document.getElementById('page-title').textContent = titleMap[viewId] || 'Traction Report System';
+
+            // Active State Navigation (Desktop & Mobile)
+            document.querySelectorAll('.nav-btn-desktop, .nav-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-primary-600', 'text-blue-500'); // reset
+                if(btn.dataset.target === viewId) {
+                    if(btn.classList.contains('nav-btn-desktop')) {
+                        btn.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
+                    } else if (!btn.classList.contains('bg-primary-500')) {
+                        // Mobile nav highlighting (kecuali FAB tengah)
+                        btn.classList.add('text-primary-600');
+                    }
+                }
+            });
+
+            // Specific View Triggers
+            if(viewId === 'dashboard' && !AppState.chartInstance) initChart();
+            if(viewId === 'kalender' && !AppState.calendarInstance) initCalendar();
+            if(viewId !== 'kehadiran') stopCamera(); // Hemat baterai matikan kamera jika pindah halaman
+            
+            // Set current time for checkin
+            if(viewId === 'kehadiran') {
+                const now = new Date();
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+                document.getElementById('current-datetime').textContent = now.toLocaleDateString('id-ID', options) + " WIB";
+            }
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tab-dana').classList.add('hidden');
+            document.getElementById('tab-reimburse').classList.add('hidden');
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            document.getElementById('btn-tab-dana').className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition';
+            document.getElementById('btn-tab-reimburse').className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition';
+            
+            const activeBtnId = tabId === 'tab-dana' ? 'btn-tab-dana' : 'btn-tab-reimburse';
+            document.getElementById(activeBtnId).className = 'px-4 py-2 rounded-lg text-sm font-medium bg-primary-500 text-white shadow-sm transition';
+        }
+
+        // --- Camera & Check In Logic ---
+        async function startCamera() {
+            const video = document.getElementById('camera-preview');
+            const placeholder = document.getElementById('camera-placeholder');
+            const btn = document.getElementById('btn-checkin');
+            const canvas = document.getElementById('camera-canvas');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                AppState.cameraStream = stream;
+                video.srcObject = stream;
+                video.classList.remove('hidden');
+                canvas.classList.add('hidden');
+                placeholder.classList.add('hidden');
+                
+                // Enable checkin button if kegiatan selected
+                document.getElementById('kegiatan-select').addEventListener('change', (e) => {
+                    if(e.target.value !== "") {
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        btn.disabled = false;
+                    }
+                });
+            } catch (err) {
+                showToast('Gagal mengakses kamera. Pastikan izin diberikan.', 'error');
+            }
+        }
+
+        function stopCamera() {
+            if(AppState.cameraStream) {
+                AppState.cameraStream.getTracks().forEach(track => track.stop());
+                AppState.cameraStream = null;
+            }
+            
+            const video = document.getElementById('camera-preview');
+            const placeholder = document.getElementById('camera-placeholder');
+            const btn = document.getElementById('btn-checkin');
+            
+            if(video) video.classList.add('hidden');
+            if(placeholder) placeholder.classList.remove('hidden');
+            if(btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function submitKehadiran() {
+            const video = document.getElementById('camera-preview');
+            const canvas = document.getElementById('camera-canvas');
+            const kegiatan = document.getElementById('kegiatan-select').value;
+            
+            if(!kegiatan) return showToast('Pilih jadwal terlebih dahulu!', 'error');
+
+            // Ambil gambar dari video ke canvas
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            // Convert to base64
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Hentikan video, tampilkan hasil capture
+            video.classList.add('hidden');
+            canvas.classList.remove('hidden');
+            stopCamera();
+
+            showToast('Mengirim data kehadiran...', 'success');
+            
+            // Simulasi pengiriman form (Nanti bisa diganti request fetch ke GAS)
+            setTimeout(() => {
+                showToast('Check-in Berhasil Disimpan!', 'success');
+                // Reset form
+                document.getElementById('kegiatan-select').value = "";
+                canvas.classList.add('hidden');
+                document.getElementById('camera-placeholder').classList.remove('hidden');
+            }, 1500);
+        }
+
+        // --- Modal & Utility Logic ---
+        function showTaskModal() {
+            const modal = document.getElementById('modal-task');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function showTaskDetail(title, desc, deadline, priority, status) {
+            document.getElementById('detail-title').textContent = title;
+            document.getElementById('detail-desc').textContent = desc;
+            document.getElementById('detail-deadline').textContent = deadline;
+            document.getElementById('detail-status').textContent = status;
+            
+            const priorityBadge = document.getElementById('detail-priority');
+            priorityBadge.textContent = priority + ' Priority';
+            if(priority === 'Tinggi' || priority === 'High') {
+                priorityBadge.className = 'text-[10px] uppercase font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded inline-block mb-2';
+            } else {
+                priorityBadge.className = 'text-[10px] uppercase font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded inline-block mb-2';
+            }
+
+            const modal = document.getElementById('modal-task-detail');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notif-dropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const bell = document.querySelector('button[onclick="toggleNotifications()"]');
+            const dropdown = document.getElementById('notif-dropdown');
+            if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        function submitSurat(event) {
+            event.preventDefault();
+            const form = event.target;
+            const btn = document.getElementById('btn-submit-surat');
+            
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = `<i class="ph ph-spinner animate-spin text-xl"></i> Mengirim...`;
+            btn.disabled = true;
+
+            // Simulasi pengiriman form (Nanti bisa diganti request fetch ke GAS)
+            setTimeout(() => {
+                showToast('Surat berhasil diajukan! Status: Menunggu Verifikasi.', 'success');
+                form.reset();
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }, 1200);
+        }
+
+        // --- Chart.js ---
+        function initChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            // Hancurkan chart lama jika ada agar tidak tumpang tindih
+            if (AppState.chartInstance) {
+                AppState.chartInstance.destroy();
+            }
+
+            // Tentukan data berdasarkan Role
+            const isAdmin = AppState.user.role === 'Master' || AppState.user.role === 'Admin';
+            
+            // Label dinamis: Divisi untuk admin, Nama Rekan untuk User
+            const labels = isAdmin 
+                ? ['Humas', 'Acara', 'Logistik', 'Kreatif', 'Fundraising'] 
+                : ['Budi (Anda)', 'Siti', 'Agus', 'Dewi', 'Rina']; 
+                
+            const kpiData = isAdmin ? [85, 92, 78, 88, 65] : [85, 90, 75, 80, 88];
+            const taskData = isAdmin ? [20, 25, 15, 30, 10] : [10, 12, 8, 9, 15];
+
+            AppState.chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Capaian KPI (%)',
+                            data: kpiData,
+                            backgroundColor: '#10b981', // Hijau cerah
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Total Task Selesai',
+                            data: taskData,
+                            backgroundColor: '#3b82f6', // Biru aksen
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: { 
+                    indexAxis: 'y', // MENGUBAH CHART MENJADI HORIZONTAL
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        x: { beginAtZero: true } 
+                    }, 
+                    plugins: { 
+                        legend: { position: 'bottom' } 
+                    } 
+                }
+            });
+        }
+
+        // --- FullCalendar ---
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            AppState.calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: { left: 'prev,next', center: 'title', right: 'dayGridMonth,listWeek' },
+                themeSystem: 'standard',
+                events: [
+                    { title: 'Deadline LPJ', start: '2026-10-10', color: '#ef4444' }, // Red (Deadline)
+                    { title: 'Rapat Rutin', start: '2026-10-11T16:00:00', color: '#3b82f6' }, // Blue (Rapat)
+                    { title: 'Proyek Lapangan', start: '2026-10-15', end: '2026-10-17', color: '#10b981' } // Green (Kegiatan)
+                ],
+                height: '100%'
+            });
+            AppState.calendarInstance.render();
+        }
+
+    </script>
+</body>
+</html>
