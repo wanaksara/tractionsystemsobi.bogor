@@ -259,7 +259,7 @@
                             <!-- Grafik Performa Chart -->
                             <div class="glass-card p-5">
                                 <div class="flex justify-between items-center mb-4">
-                                    <h3 id="chart-title" class="font-semibold text-gray-700">Performa Seluruh Anggota BEM</h3>
+                                    <h3 id="chart-title" class="font-semibold text-gray-700">Performa Seluruh Anggota</h3>
                                     <span class="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-medium"><i class="ph ph-arrows-clockwise"></i> Live Update</span>
                                 </div>
                                 <div class="relative h-[360px] w-full"><canvas id="performanceChart"></canvas></div>
@@ -2344,7 +2344,7 @@
                 averageTaskScores = [0, 0, 0, 0];
             }
 
-            document.getElementById('chart-title').textContent = "Performa Seluruh Anggota BEM (Kehadiran & Tugas Selesai)";
+            document.getElementById('chart-title').textContent = "Performa Seluruh Anggota";
             
             AppState.chartInstance = new Chart(ctx, { 
                 type: 'bar', 
