@@ -259,7 +259,7 @@
                             <!-- Grafik Performa Chart -->
                             <div class="glass-card p-5">
                                 <div class="flex justify-between items-center mb-4">
-                                    <h3 id="chart-title" class="font-semibold text-gray-700">Performa Seluruh Anggota BEM</h3>
+                                    <h3 id="chart-title" class="font-semibold text-gray-700">Performa Seluruh Anggota</h3>
                                     <span class="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-medium"><i class="ph ph-arrows-clockwise"></i> Live Update</span>
                                 </div>
                                 <div class="relative h-[360px] w-full"><canvas id="performanceChart"></canvas></div>
@@ -1127,7 +1127,7 @@
                 // ATURAN BARU: Langsung tolak jika akun tidak terdaftar di Supabase Users
                 if(!data) {
                     await supabaseClient.auth.signOut();
-                    alert(`Akses Ditolak!\n\nAkun Google Anda (${email}) belum terdaftar dalam fungsionaris BEM Sobat Bumi Bogor.\n\nSilakan hubungi Administrator/Master untuk mendaftarkan email Anda.`);
+                    alert(`Akses Ditolak!\n\nAkun Google Anda (${email}) belum terdaftar dalam fungsionaris Sobat Bumi Bogor.\n\nSilakan hubungi Administrator/Master untuk mendaftarkan email Anda.`);
                     document.getElementById('btn-login').disabled = false;
                     document.getElementById('btn-login').innerHTML = `Lanjutkan dengan Google`;
                     return;
@@ -1787,7 +1787,7 @@
                             <p class="text-xs text-center text-green-600 italic font-semibold">Tugas ini telah diselesaikan. Link: <a href="${task.link_hasil}" target="_blank" class="underline text-blue-600">${task.link_hasil||'-'}</a></p>
                         `;
                     } else {
-                        actionArea.innerHTML = `<p class="text-xs text-center text-gray-500 italic">Tugas ini sedang dalam tahap review oleh Master BEM.</p>`;
+                        actionArea.innerHTML = `<p class="text-xs text-center text-gray-500 italic">Tugas ini sedang dalam tahap review.</p>`;
                     }
                 }
             }
@@ -2472,7 +2472,7 @@
             }
 
             const totalJadwalVal = AppState.totalJadwalCount || 1; // Jadwal terinput sebagai batas maksimal sumbu kehadiran
-            document.getElementById('chart-title').textContent = "Performa Seluruh Anggota BEM (Kehadiran & Tugas Selesai)";
+            document.getElementById('chart-title').textContent = "Performa Seluruh Anggota";
             
             AppState.chartInstance = new Chart(ctx, { 
                 type: 'bar', 
